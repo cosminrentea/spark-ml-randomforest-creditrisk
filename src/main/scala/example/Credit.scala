@@ -25,8 +25,7 @@ object Credit {
     balance: Double, duration: Double, history: Double, purpose: Double, amount: Double,
     savings: Double, employment: Double, instPercent: Double, sexMarried: Double, guarantors: Double,
     residenceDuration: Double, assets: Double, age: Double, concCredit: Double, apartment: Double,
-    credits: Double, occupation: Double, dependents: Double, hasPhone: Double, foreign: Double
-  )
+    credits: Double, occupation: Double, dependents: Double, hasPhone: Double, foreign: Double)
 
   def parseCredit(line: Array[Double]): Credit = {
     Credit(
@@ -34,8 +33,7 @@ object Credit {
       line(1) - 1, line(2), line(3), line(4), line(5),
       line(6) - 1, line(7) - 1, line(8), line(9) - 1, line(10) - 1,
       line(11) - 1, line(12) - 1, line(13), line(14) - 1, line(15) - 1,
-      line(16) - 1, line(17) - 1, line(18) - 1, line(19) - 1, line(20) - 1
-    )
+      line(16) - 1, line(17) - 1, line(18) - 1, line(19) - 1, line(20) - 1)
   }
 
   def parseRDD(rdd: RDD[String]): RDD[Array[Double]] = {
@@ -44,16 +42,15 @@ object Credit {
 
   def main(args: Array[String]) {
 
-    val conf = new SparkConf().setAppName("SparkDFebay")
+    val conf = new SparkConf().setAppName("SparkMLCreditRisk").setMaster("local[*]")
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
     import sqlContext._
     import sqlContext.implicits._
 
     val creditDF = parseRDD(sc.textFile("germancredit.csv")).map(parseCredit).toDF().cache()
-    creditDF.registerTempTable("credit")
+    creditDF.createOrReplaceTempView("credit")
     creditDF.printSchema
-
     creditDF.show
 
     sqlContext.sql("SELECT creditability, avg(balance) as avgbalance, avg(amount) as avgamt, avg(duration) as avgdur  FROM credit GROUP BY creditability ").show
@@ -72,6 +69,7 @@ object Credit {
     val labelIndexer = new StringIndexer().setInputCol("creditability").setOutputCol("label")
     val df3 = labelIndexer.fit(df2).transform(df2)
     df3.show
+
     val splitSeed = 5043
     val Array(trainingData, testData) = df3.randomSplit(Array(0.7, 0.3), splitSeed)
 
@@ -87,14 +85,25 @@ object Credit {
 
     val rm = new RegressionMetrics(
       predictions.select("prediction", "label").rdd.map(x =>
-        (x(0).asInstanceOf[Double], x(1).asInstanceOf[Double]))
-    )
+        (x(0).asInstanceOf[Double], x(1).asInstanceOf[Double])))
     println("MSE: " + rm.meanSquaredError)
     println("MAE: " + rm.meanAbsoluteError)
     println("RMSE Squared: " + rm.rootMeanSquaredError)
     println("R Squared: " + rm.r2)
     println("Explained Variance: " + rm.explainedVariance + "\n")
 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     val paramGrid = new ParamGridBuilder()
       .addGrid(classifier.maxBins, Array(25, 31))
       .addGrid(classifier.maxDepth, Array(5, 10))
@@ -126,8 +135,7 @@ object Credit {
 
     val rm2 = new RegressionMetrics(
       predictions2.select("prediction", "label").rdd.map(x =>
-        (x(0).asInstanceOf[Double], x(1).asInstanceOf[Double]))
-    )
+        (x(0).asInstanceOf[Double], x(1).asInstanceOf[Double])))
 
     println("MSE: " + rm2.meanSquaredError)
     println("MAE: " + rm2.meanAbsoluteError)
